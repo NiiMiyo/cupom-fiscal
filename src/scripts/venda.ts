@@ -96,9 +96,16 @@ export class Venda {
 		}
 
 		// Produto com valor unitário zero ou negativo - item não pode ser adicionado na venda com produto nesse estado
-		if (item.valorUnitario <= 0) {
-			throw new Error("Valor unitário inválido");
+		if (item.produto.valorUnitario <= 0) {
+			throw new Error("Valor unitário inválido.");
 		}
+
+		// Dois itens que apontam pro mesmo produto
+		this.itens.forEach((item_linha) => {
+			if (item.produto.codigo == item_linha.produto.codigo) {
+				throw new Error("Produto já adicionado na venda.");
+			}
+		});
 
 		this._itens.push(item);
 	}

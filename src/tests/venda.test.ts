@@ -3,6 +3,7 @@
 import { Endereco } from "../scripts/endereco";
 import { ItemVenda } from "../scripts/itemVenda";
 import { Loja } from "../scripts/loja";
+import { Produto } from "../scripts/produto";
 import { Venda } from "../scripts/venda";
 
 function verificaCampoObrigatorio(mensagemEsperada: string, venda: Venda) {
@@ -72,13 +73,14 @@ TOTAL R$ 12.74
 
 const MENSAGEM_VENDA_SEM_ITENS = `É necessário pelo menos um item na venda.`;
 const MENSAGEM_VENDA_QUANTID_0 = `Quantidade inválida.`;
-const MENSAGEM_VALOR_UNITARI_0 = "Valor unitário inválido";
+const MENSAGEM_VALOR_UNITARI_0 = "Valor unitário inválido.";
+const MENSAGEM_PRODUTO_DUPLICA = "Produto já adicionado na venda.";
 
 test("Venda Completa", () => {
 	const venda = new Venda(LOJA_COMPLETA, DATA_PADRAO, CCF, COO);
-	venda.adicionarItem(
-		new ItemVenda(1, 123456, "Produto1", 2, "kg", 4.35, "")
-	);
+	const produto1 = new Produto(123456, "Produto1", "kg", 4.35, "");
+
+	venda.adicionarItem(new ItemVenda(1, produto1, 2));
 
 	expect(venda.dadosVendas()).toBe(TEXTO_VENDA_COMPLETA);
 });
@@ -101,10 +103,11 @@ test("Validar CCF", () => {
 
 test("Venda com 2 itens", () => {
 	const venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
-	venda.adicionarItem(
-		new ItemVenda(1, 123456, "Produto1", 2, "kg", 4.35, "")
-	);
-	venda.adicionarItem(new ItemVenda(2, 234567, "Produto2", 4, "m", 1.01, ""));
+	const produto1 = new Produto(123456, "Produto1", "kg", 4.35, "");
+	const produto2 = new Produto(234567, "Produto2", "m", 1.01, "");
+
+	venda.adicionarItem(new ItemVenda(1, produto1, 2));
+	venda.adicionarItem(new ItemVenda(2, produto2, 4));
 
 	expect(venda.imprimeCupom()).toBe(TEXTO_ESPERADO_CUPOM_FISCAL_DOIS_ITENS);
 });
@@ -117,13 +120,12 @@ test("Venda sem itens", () => {
 
 test("Venda com item quantidade 0", () => {
 	const venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
+	const produto1 = new Produto(123456, "Produto1", "kg", 4.35, "");
 
 	let mensagem;
 
 	try {
-		venda.adicionarItem(
-			new ItemVenda(1, 123456, "Produto1", 0, "kg", 4.35, "")
-		);
+		venda.adicionarItem(new ItemVenda(1, produto1, 0));
 	} catch (error) {
 		mensagem = error.message;
 	}
@@ -132,15 +134,30 @@ test("Venda com item quantidade 0", () => {
 
 test("Venda com item valor 0", () => {
 	const venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
+	const produto1 = new Produto(123456, "Produto1", "kg", 0, "");
 
 	let mensagem;
 
 	try {
-		venda.adicionarItem(
-			new ItemVenda(1, 123456, "Produto1", 5, "kg", 0, "")
-		);
+		venda.adicionarItem(new ItemVenda(1, produto1, 5));
 	} catch (error) {
 		mensagem = error.message;
 	}
 	expect(mensagem).toBe(MENSAGEM_VALOR_UNITARI_0);
+});
+
+test("Venda com dois itens apontando para o mesmo produto", () => {
+	const venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
+	const produto1 = new Produto(123456, "Produto1", "kg", 5.5, "");
+
+	let mensagem;
+
+	try {
+		venda.adicionarItem(new ItemVenda(1, produto1, 5));
+		venda.adicionarItem(new ItemVenda(2, produto1, 1));
+	} catch (error) {
+		mensagem = error.message;
+	}
+
+	expect(mensagem).toBe(MENSAGEM_PRODUTO_DUPLICA);
 });

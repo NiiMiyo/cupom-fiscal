@@ -1,23 +1,21 @@
+import { Produto } from "./produto";
+
 export class ItemVenda {
 	constructor(
 		public item: number,
-		public codigo: number,
-		public descricao: string,
-		public quantidade: number,
-		public unidade: string,
-		public valorUnitario: number,
-		public substituicaoTributaria: string
+		public produto: Produto,
+		public quantidade: number
 	) {}
 
 	public imprimeItem(): string {
-		return `${this.item} ${this.codigo} ${this.descricao} ${
+		return `${this.item} ${this.produto.codigo} ${this.produto.descricao} ${
 			this.quantidade
-		} ${this.unidade} ${this.valorUnitario.toFixed(2)} ${
-			this.substituicaoTributaria
+		} ${this.produto.unidade} ${this.produto.valorUnitario.toFixed(2)} ${
+			this.produto.substituicaoTributaria
 		} ${this.valorTotal().toFixed(2)}`;
 	}
 
 	public valorTotal(): number {
-		return this.quantidade * this.valorUnitario;
+		return this.quantidade * this.produto.valorUnitario;
 	}
 }
