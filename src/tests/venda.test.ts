@@ -161,3 +161,21 @@ test("Venda com dois itens apontando para o mesmo produto", () => {
 
 	expect(mensagem).toBe(MENSAGEM_PRODUTO_DUPLICA);
 });
+
+test("Mudar preços negociando - Porcentagem", () => {
+	const produto = new Produto(123456, "Produto1", "un", 100, "", {
+		tipo: "porcentagem",
+		valor: 1.1,
+	});
+
+	expect(produto.valorUnitario.toFixed(2)).toBe("110.00");
+});
+
+test("Mudar preços negociando - Fixo", () => {
+	const produto = new Produto(234567, "Produto2", "un", 100, "", {
+		tipo: "fixo",
+		valor: 29,
+	});
+
+	expect(produto.valorUnitario.toFixed(2)).toBe("129.00");
+});
