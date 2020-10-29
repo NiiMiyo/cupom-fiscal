@@ -163,19 +163,23 @@ test("Venda com dois itens apontando para o mesmo produto", () => {
 });
 
 test("Mudar preços negociando - Porcentagem", () => {
-	const produto = new Produto(123456, "Produto1", "un", 100, "", {
+	const produto = new Produto(123456, "Produto1", "un", 100, "");
+
+	const itemVenda = new ItemVenda(1, produto, 1, {
 		tipo: "porcentagem",
 		valor: 1.1,
 	});
 
-	expect(produto.valorUnitario.toFixed(2)).toBe("110.00");
+	expect(itemVenda.valorTotal().toFixed(2)).toBe("110.00");
 });
 
 test("Mudar preços negociando - Fixo", () => {
-	const produto = new Produto(234567, "Produto2", "un", 100, "", {
+	const produto = new Produto(234567, "Produto2", "un", 100, "");
+
+	const itemVenda = new ItemVenda(1, produto, 1, {
 		tipo: "fixo",
 		valor: 29,
 	});
 
-	expect(produto.valorUnitario.toFixed(2)).toBe("129.00");
+	expect(itemVenda.valorTotal().toFixed(2)).toBe("129.00");
 });
