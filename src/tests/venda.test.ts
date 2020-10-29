@@ -72,9 +72,12 @@ TOTAL R$ 12.74
 `;
 
 const MENSAGEM_VENDA_SEM_ITENS = `É necessário pelo menos um item na venda.`;
-const MENSAGEM_VENDA_QUANTID_0 = `Quantidade inválida.`;
-const MENSAGEM_VALOR_UNITARI_0 = "Valor unitário inválido.";
-const MENSAGEM_PRODUTO_DUPLICA = "Produto já adicionado na venda.";
+const MENSAGEM_VENDA_QUANTIDADE_ZERO = `Quantidade inválida.`;
+const MENSAGEM_VALOR_UNITARIO_ZERO = "Valor unitário inválido.";
+const MENSAGEM_PRODUTO_DUPLICADO = "Produto já adicionado na venda.";
+const MENSAGEM_VENDA_EM_ANDAMENTO = "A venda não foi finalizada.";
+const MENSAGEM_ADD_ITEM_VENDA_FINALIZADA = "Esta venda já foi finalizada.";
+const MENSAGEM_PAGAMENTO_INSUFICIENTE = "O valor pago não é suficente.";
 
 test("Venda Completa", () => {
 	const venda = new Venda(LOJA_COMPLETA, DATA_PADRAO, CCF, COO);
@@ -129,7 +132,7 @@ test("Venda com item quantidade 0", () => {
 	} catch (error) {
 		mensagem = error.message;
 	}
-	expect(mensagem).toBe(MENSAGEM_VENDA_QUANTID_0);
+	expect(mensagem).toBe(MENSAGEM_VENDA_QUANTIDADE_ZERO);
 });
 
 test("Venda com item valor 0", () => {
@@ -143,7 +146,7 @@ test("Venda com item valor 0", () => {
 	} catch (error) {
 		mensagem = error.message;
 	}
-	expect(mensagem).toBe(MENSAGEM_VALOR_UNITARI_0);
+	expect(mensagem).toBe(MENSAGEM_VALOR_UNITARIO_ZERO);
 });
 
 test("Venda com dois itens apontando para o mesmo produto", () => {
@@ -159,7 +162,7 @@ test("Venda com dois itens apontando para o mesmo produto", () => {
 		mensagem = error.message;
 	}
 
-	expect(mensagem).toBe(MENSAGEM_PRODUTO_DUPLICA);
+	expect(mensagem).toBe(MENSAGEM_PRODUTO_DUPLICADO);
 });
 
 test("Mudar preços negociando - Porcentagem", () => {
@@ -182,4 +185,68 @@ test("Mudar preços negociando - Fixo", () => {
 	});
 
 	expect(itemVenda.valorTotal().toFixed(2)).toBe("129.00");
+});
+
+test("Cálculo de troco", () => {
+	let venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
+	const produto = new Produto(234567, "Produto2", "un", 100, "");
+
+	venda.adicionarItem(new ItemVenda(1, produto, 1));
+	venda.finalizarVenda("dinheiro", 101);
+
+	expect(venda.troco).toBe(1);
+});
+
+test("Troco com venda em andamento", () => {
+	let venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
+	const produto = new Produto(234567, "Produto2", "un", 100, "");
+
+	venda.adicionarItem(new ItemVenda(1, produto, 1));
+
+	let mensagem;
+
+	try {
+		let _ = venda.troco;
+	} catch (error) {
+		mensagem = error.message;
+	}
+
+	expect(mensagem).toBe(MENSAGEM_VENDA_EM_ANDAMENTO);
+});
+
+test("Adicionar item em venda finalizada", () => {
+	let venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
+	const produto1 = new Produto(234567, "Produto1", "un", 100, "");
+	const produto2 = new Produto(123456, "Produto2", "un", 100, "");
+
+	venda.adicionarItem(new ItemVenda(1, produto1, 1));
+	venda.finalizarVenda("dinheiro", Infinity);
+
+	let mensagem;
+	try {
+		venda.adicionarItem(new ItemVenda(2, produto2, 1));
+	} catch (error) {
+		mensagem = error.message;
+	}
+
+	expect(mensagem).toBe(MENSAGEM_ADD_ITEM_VENDA_FINALIZADA);
+});
+
+test("Valor de pagamento insuficiente", () => {
+	let venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
+	const produto = new Produto(234567, "Produto1", "un", 100, "");
+
+	venda.adicionarItem(
+		new ItemVenda(1, produto, 1, { tipo: "porcentagem", valor: Infinity })
+	);
+
+	let mensagem;
+
+	try {
+		venda.finalizarVenda("dinheiro", 0);
+	} catch (error) {
+		mensagem = error.message;
+	}
+
+	expect(mensagem).toBe(MENSAGEM_PAGAMENTO_INSUFICIENTE);
 });

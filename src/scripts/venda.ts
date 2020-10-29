@@ -13,6 +13,22 @@ export class Venda {
 		this.coo = Math.floor(coo);
 
 		this._itens = new Array<ItemVenda>();
+		this._finalizada = false;
+		this._troco = NaN;
+	}
+
+	private _troco: number;
+	public get troco(): number {
+		if (!this._finalizada) {
+			throw new Error("A venda não foi finalizada.");
+		}
+
+		return this._troco;
+	}
+
+	private _finalizada: boolean;
+	public get finalizada(): boolean {
+		return this._finalizada;
 	}
 
 	private _itens: ItemVenda[];
@@ -90,6 +106,10 @@ export class Venda {
 	}
 
 	public adicionarItem(item: ItemVenda) {
+		if (this.finalizada) {
+			throw new Error("Esta venda já foi finalizada.");
+		}
+
 		// Item de Venda com quantidade zero ou negativa - não pode ser adicionado na venda
 		if (item.quantidade <= 0) {
 			throw new Error("Quantidade inválida.");
@@ -136,5 +156,18 @@ export class Venda {
 		});
 
 		return total;
+	}
+
+	public finalizarVenda(
+		pagamento: "dinheiro" | "credito" | "debito",
+		valor: number
+	): number {
+		if (valor < this.valorTotal()) {
+			throw new Error("O valor pago não é suficente.");
+		}
+		this._troco = valor - this.valorTotal();
+		this._finalizada = true;
+
+		return this._troco;
 	}
 }
