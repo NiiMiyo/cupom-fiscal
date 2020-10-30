@@ -1,0 +1,29 @@
+name: Test Application
+on: [push]
+
+jobs:
+    test:
+        name: Run Units Tests
+        runs-on: ubuntu-latest
+
+        strategy:
+            matrix:
+                node-version: [12.x, 14.x]
+
+        steps:
+            - uses: actions/checkout@v2
+
+            - name: Setting up Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@main
+              with:
+                  node-version: ${{ matrix.node-version }}
+
+            - name: Install
+              uses: borales/actions-yarn@master
+              with:
+                  cmd: install
+
+            - name: Test
+              uses: borales/actions-yarn@master
+              with:
+                  cmd: test
