@@ -29,11 +29,11 @@ jobs:
           node-version: matrix.node-version
 
       - name: Install
-      - uses: borales/actions-yarn@master
+        uses: borales/actions-yarn@master
         with:
           cmd: install # will run `yarn install` command
 
       - name: Test
-      - uses: borales/actions-yarn@master
+        uses: borales/actions-yarn@master
         with:
           cmd: test # will run `yarn test` command
