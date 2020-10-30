@@ -1,6 +1,19 @@
-import { justify } from "./actions";
+import { isEmpty, justify } from "./actions";
 import { ItemVenda } from "./itemVenda";
 import { Loja } from "./loja";
+
+const IMPOSTO_FEDERAL = 0.0754;
+const IMPOSTO_ESTADUAL = 0.0481;
+
+interface ImpostoProps {
+	federal: number;
+	estadual: number;
+}
+
+export interface PagamentoProps {
+	forma: "dinheiro" | "credito" | "debito";
+	valor: number;
+}
 
 export class Venda {
 	constructor(
@@ -15,6 +28,20 @@ export class Venda {
 		this._itens = new Array<ItemVenda>();
 		this._finalizada = false;
 		this._troco = NaN;
+
+		this._pagamento = {
+			forma: "dinheiro",
+			valor: NaN,
+		};
+	}
+
+	private _pagamento: PagamentoProps;
+	public get pagamento(): PagamentoProps {
+		if (!this._finalizada) {
+			throw new Error("A venda não foi finalizada.");
+		}
+
+		return this._pagamento;
 	}
 
 	private _troco: number;
@@ -34,6 +61,13 @@ export class Venda {
 	private _itens: ItemVenda[];
 	public get itens(): ItemVenda[] {
 		return this._itens;
+	}
+
+	public get impostos(): ImpostoProps {
+		return {
+			estadual: this.valorTotal() * IMPOSTO_ESTADUAL,
+			federal: this.valorTotal() * IMPOSTO_FEDERAL,
+		};
 	}
 
 	public dadosVendas(): string {
@@ -88,6 +122,10 @@ export class Venda {
 	public imprimeCupom(): string {
 		this.validarCamposObrigatorios();
 
+		if (!this._finalizada) {
+			throw new Error("A venda não foi finalizada.");
+		}
+
 		let cupom: string;
 
 		let textoLoja = this.loja.dadosLoja();
@@ -95,17 +133,44 @@ export class Venda {
 
 		cupom = `${textoLoja}------------------------------\n${textoVenda}\n   CUPOM FISCAL   \nITEM CODIGO DESCRICAO QTD UN VL UNIT(R$) ST VL ITEM(R$)\n`;
 
-		this._itens.forEach((item) => {
-			cupom += item.imprimeItem() + "\n";
+		this._itens.forEach((item, index) => {
+			cupom += item.imprimeItem(index + 1) + "\n";
 		});
 
 		cupom += `------------------------------\n`;
-		cupom += `TOTAL R\$ ${this.valorTotal().toFixed(2)}\n`;
+
+		const total = this.valorTotal().toFixed(2);
+		const valorPago = this._pagamento.valor.toFixed(2);
+		const troco = this.troco.toFixed(2);
+
+		const impostoF = `${this.impostos.federal.toFixed(2)} (${(
+			IMPOSTO_FEDERAL * 100
+		).toFixed(2)})`;
+
+		const impostoE = `${this.impostos.estadual.toFixed(2)} (${(
+			IMPOSTO_ESTADUAL * 100
+		).toFixed(2)}%)`;
+
+		let formaDePagamento: string;
+
+		switch (this._pagamento.forma) {
+			case "credito":
+				formaDePagamento = "Crédito";
+				break;
+			case "debito":
+				formaDePagamento = "Débito";
+				break;
+			case "dinheiro":
+				formaDePagamento = "Dinheiro";
+				break;
+		}
+
+		cupom += `TOTAL R\$ ${total}\n${formaDePagamento} ${valorPago}\nTroco R$ ${troco}\nLei 12.741, Valor aprox., Imposto F=${impostoF}, E=${impostoE}\n`;
 
 		return cupom;
 	}
 
-	public adicionarItem(item: ItemVenda) {
+	public adicionarItem(item: ItemVenda): void {
 		if (this.finalizada) {
 			throw new Error("Esta venda já foi finalizada.");
 		}
@@ -120,6 +185,10 @@ export class Venda {
 			throw new Error("Valor unitário inválido.");
 		}
 
+		if (isEmpty(item.produto.descricao)) {
+			throw new Error("A descrição do item não pode ser vazia.");
+		}
+
 		// Dois itens que apontam pro mesmo produto
 		this.itens.forEach((item_linha) => {
 			if (item.produto.codigo == item_linha.produto.codigo) {
@@ -130,7 +199,7 @@ export class Venda {
 		this._itens.push(item);
 	}
 
-	private validarCamposObrigatorios() {
+	private validarCamposObrigatorios(): void {
 		this.loja.dadosLoja();
 
 		if (this.ccf <= 0) {
@@ -138,7 +207,9 @@ export class Venda {
 		}
 
 		if (this.coo <= 0) {
-			throw new Error("O Contador de Cupom Fiscal (COO) é obrigatório.");
+			throw new Error(
+				"O Contador de Ordem de Operação (COO) é obrigatório."
+			);
 		}
 
 		if (this.itens.length == 0) {
@@ -159,15 +230,18 @@ export class Venda {
 	}
 
 	public finalizarVenda(
-		pagamento: "dinheiro" | "credito" | "debito",
+		forma: "dinheiro" | "credito" | "debito",
 		valor: number
-	): number {
+	): void {
 		if (valor < this.valorTotal()) {
 			throw new Error("O valor pago não é suficente.");
 		}
 		this._troco = valor - this.valorTotal();
 		this._finalizada = true;
 
-		return this._troco;
+		this._pagamento = {
+			forma,
+			valor,
+		};
 	}
 }

@@ -15,7 +15,6 @@ export class Loja {
 	public readonly vendas = new Array<Venda>();
 
 	public dadosLoja(): string {
-		// Implemente aqui
 		this.validarCamposObrigatorios();
 
 		let loja = `${this.nomeLoja}\n`;

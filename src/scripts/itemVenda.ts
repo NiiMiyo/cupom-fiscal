@@ -7,7 +7,6 @@ interface NegociacaoProps {
 
 export class ItemVenda {
 	constructor(
-		public item: number,
 		public produto: Produto,
 		public quantidade: number,
 		public negocio: NegociacaoProps = { valor: 1, tipo: "porcentagem" }
@@ -23,8 +22,8 @@ export class ItemVenda {
 		}
 	}
 
-	public imprimeItem(): string {
-		return `${this.item} ${this.produto.codigo} ${this.produto.descricao} ${
+	public imprimeItem(item: number): string {
+		return `${item} ${this.produto.codigo} ${this.produto.descricao} ${
 			this.quantidade
 		} ${this.produto.unidade} ${this.produto.valorUnitario.toFixed(2)} ${
 			this.produto.substituicaoTributaria
