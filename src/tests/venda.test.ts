@@ -1,18 +1,9 @@
 import { Endereco } from "../scripts/endereco";
+import { ImpressoraFiscal } from "../scripts/impressoraFiscal";
 import { ItemVenda } from "../scripts/itemVenda";
 import { Loja } from "../scripts/loja";
 import { Produto } from "../scripts/produto";
 import { PagamentoProps, Venda } from "../scripts/venda";
-
-function verificaCampoObrigatorio(mensagemEsperada: string, venda: Venda) {
-	let mensagemErro;
-	try {
-		venda.imprimeCupom();
-	} catch (e) {
-		mensagemErro = e.message;
-	}
-	expect(mensagemErro).toBe(mensagemEsperada);
-}
 
 const NOME_LOJA = "Loja 1";
 const LOGRADOURO = "Log 1";
@@ -48,6 +39,47 @@ const DATA_PADRAO = new Date(2020, 11, 25, 10, 30, 40);
 const CCF = 21784;
 const COO = 35804;
 
+const IMPRESSORA = new ImpressoraFiscal(
+	"SWEDA IF ST200",
+	"01.00.05",
+	"067",
+	"SW031300000000045629"
+);
+
+const OPERADOR = 494715;
+
+function verificaCampoObrigatorio(mensagemEsperada: string, venda: Venda) {
+	let mensagemErro;
+	try {
+		venda.imprimeCupom();
+	} catch (e) {
+		mensagemErro = e.message;
+	}
+	expect(mensagemErro).toBe(mensagemEsperada);
+}
+
+const VENDA_TESTES = new Venda(LOJA_COMPLETA, DATA_PADRAO, CCF, COO);
+
+function adicionarItemInválido(mensagemEsperada: string, item: ItemVenda) {
+	let mensagemErro;
+	try {
+		VENDA_TESTES.adicionarItem(item);
+	} catch (e) {
+		mensagemErro = e.message;
+	}
+	expect(mensagemErro).toBe(mensagemEsperada);
+}
+
+function testarErros(mensagemEsperada: string, teste: Function) {
+	let mensagemErro;
+	try {
+		teste();
+	} catch (error) {
+		mensagemErro = error.message;
+	}
+	expect(mensagemErro).toBe(mensagemEsperada);
+}
+
 const TEXTO_VENDA_COMPLETA = "25/11/2020 10:30:40V CCF:021784 COO: 035804";
 
 const TEXTO_ESPERADO_CUPOM_FISCAL_DOIS_ITENS = `Loja 1
@@ -68,6 +100,12 @@ TOTAL R$ 12.74
 Dinheiro 12.74
 Troco R$ 0.00
 Lei 12.741, Valor aprox., Imposto F=0.96 (7.54), E=0.61 (4.81%)
+------------------------------
+OPERADOR: 494715
+------------------------------
+SWEDA IF ST200
+ECF-IF VERSÃO: 01.00.05 ECF: 067
+FAB: SW031300000000045629
 `;
 
 const MENSAGEM_VENDA_SEM_ITENS = `É necessário pelo menos um item na venda.`;
@@ -77,11 +115,14 @@ const MENSAGEM_PRODUTO_DUPLICADO = "Produto já adicionado na venda.";
 const MENSAGEM_VENDA_NAO_FINALIZADA = "A venda não foi finalizada.";
 const MENSAGEM_VENDA_FINALIZADA = "Esta venda já foi finalizada.";
 const MENSAGEM_PAGAMENTO_INSUFICIENTE = "O valor pago não é suficente.";
+const MENSAGEM_OPERADOR_INVALIDO = "Operador inválido.";
+
 const MENSAGEM_PRODUTO_SEM_DESCRICAO =
 	"A descrição do item não pode ser vazia.";
 
 const MENSAGEM_COO_OBRIGATORIO =
 	"O Contador de Ordem de Operação (COO) é obrigatório.";
+
 const MENSAGEM_CCF_OBRIGATORIO =
 	"O Contador de Cupom Fiscal (CCF) é obrigatório.";
 
@@ -112,7 +153,7 @@ test("Venda com 2 itens", () => {
 	venda.adicionarItem(new ItemVenda(produto1, 2));
 	venda.adicionarItem(new ItemVenda(produto2, 4));
 
-	venda.finalizarVenda("dinheiro", 12.74);
+	venda.finalizarVenda("dinheiro", 12.74, IMPRESSORA, OPERADOR);
 
 	expect(venda.imprimeCupom()).toBe(TEXTO_ESPERADO_CUPOM_FISCAL_DOIS_ITENS);
 });
@@ -124,47 +165,40 @@ test("Venda sem itens", () => {
 });
 
 test("Venda com item quantidade 0", () => {
-	const venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
-	const produto1 = new Produto(123456, "Produto1", "kg", 4.35, "");
+	const produto = new Produto(123456, "Produto1", "kg", 4.35, "");
 
-	let mensagem;
-
-	try {
-		venda.adicionarItem(new ItemVenda(produto1, 0));
-	} catch (error) {
-		mensagem = error.message;
-	}
-	expect(mensagem).toBe(MENSAGEM_VENDA_QUANTIDADE_ZERO);
+	adicionarItemInválido(
+		MENSAGEM_VENDA_QUANTIDADE_ZERO,
+		new ItemVenda(produto, 0)
+	);
 });
 
 test("Venda com item valor 0", () => {
-	const venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
-	const produto1 = new Produto(123456, "Produto1", "kg", 0, "");
+	const produto = new Produto(123456, "Produto1", "kg", 0, "");
 
-	let mensagem;
+	adicionarItemInválido(
+		MENSAGEM_VALOR_UNITARIO_ZERO,
+		new ItemVenda(produto, 5)
+	);
+});
 
-	try {
-		venda.adicionarItem(new ItemVenda(produto1, 5));
-	} catch (error) {
-		mensagem = error.message;
-	}
-	expect(mensagem).toBe(MENSAGEM_VALOR_UNITARIO_ZERO);
+test("Adicionar item sem descrição", () => {
+	const produto = new Produto(234567, "", "un", 100, "");
+
+	adicionarItemInválido(
+		MENSAGEM_PRODUTO_SEM_DESCRICAO,
+		new ItemVenda(produto, 1)
+	);
 });
 
 test("Venda com dois itens apontando para o mesmo produto", () => {
-	const venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
-	const produto1 = new Produto(123456, "Produto1", "kg", 5.5, "");
+	testarErros(MENSAGEM_PRODUTO_DUPLICADO, () => {
+		const venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
+		const produto = new Produto(123456, "Produto1", "kg", 5.5, "");
 
-	let mensagem;
-
-	try {
-		venda.adicionarItem(new ItemVenda(produto1, 5));
-		venda.adicionarItem(new ItemVenda(produto1, 1));
-	} catch (error) {
-		mensagem = error.message;
-	}
-
-	expect(mensagem).toBe(MENSAGEM_PRODUTO_DUPLICADO);
+		venda.adicionarItem(new ItemVenda(produto, 5));
+		venda.adicionarItem(new ItemVenda(produto, 1));
+	});
 });
 
 test("Mudar preços negociando - Porcentagem", () => {
@@ -194,95 +228,67 @@ test("Cálculo de troco", () => {
 	const produto = new Produto(234567, "Produto2", "un", 100, "");
 
 	venda.adicionarItem(new ItemVenda(produto, 1));
-	venda.finalizarVenda("dinheiro", 101);
+	venda.finalizarVenda("dinheiro", 101, IMPRESSORA, OPERADOR);
 
 	expect(venda.troco).toBe(1);
 });
 
 test("Troco com venda em andamento", () => {
-	let venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
-	const produto = new Produto(234567, "Produto2", "un", 100, "");
+	testarErros(MENSAGEM_VENDA_NAO_FINALIZADA, () => {
+		let venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
+		const produto = new Produto(234567, "Produto2", "un", 100, "");
 
-	venda.adicionarItem(new ItemVenda(produto, 1));
-
-	let mensagem;
-
-	try {
+		venda.adicionarItem(new ItemVenda(produto, 1));
 		let _ = venda.troco;
-	} catch (error) {
-		mensagem = error.message;
-	}
-
-	expect(mensagem).toBe(MENSAGEM_VENDA_NAO_FINALIZADA);
+	});
 });
 
 test("Adicionar item em venda finalizada", () => {
-	let venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
-	const produto1 = new Produto(234567, "Produto1", "un", 100, "");
-	const produto2 = new Produto(123456, "Produto2", "un", 100, "");
+	testarErros(MENSAGEM_VENDA_FINALIZADA, () => {
+		let venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
+		const produto1 = new Produto(234567, "Produto1", "un", 100, "");
+		const produto2 = new Produto(123456, "Produto2", "un", 100, "");
 
-	venda.adicionarItem(new ItemVenda(produto1, 1));
-	venda.finalizarVenda("dinheiro", Infinity);
+		venda.adicionarItem(new ItemVenda(produto1, 1));
+		venda.finalizarVenda("dinheiro", Infinity, IMPRESSORA, OPERADOR);
 
-	let mensagem;
-	try {
 		venda.adicionarItem(new ItemVenda(produto2, 1));
-	} catch (error) {
-		mensagem = error.message;
-	}
-
-	expect(mensagem).toBe(MENSAGEM_VENDA_FINALIZADA);
+	});
 });
 
 test("Valor de pagamento insuficiente", () => {
-	let venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
-	const produto = new Produto(234567, "Produto1", "un", 100, "");
+	testarErros(MENSAGEM_PAGAMENTO_INSUFICIENTE, () => {
+		let venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
+		const produto = new Produto(234567, "Produto1", "un", 100, "");
 
-	venda.adicionarItem(
-		new ItemVenda(produto, 1, { tipo: "porcentagem", valor: Infinity })
-	);
+		venda.adicionarItem(
+			new ItemVenda(produto, 1, { tipo: "porcentagem", valor: Infinity })
+		);
 
-	let mensagem;
-
-	try {
-		venda.finalizarVenda("dinheiro", 0);
-	} catch (error) {
-		mensagem = error.message;
-	}
-
-	expect(mensagem).toBe(MENSAGEM_PAGAMENTO_INSUFICIENTE);
+		venda.finalizarVenda("dinheiro", 0, IMPRESSORA, OPERADOR);
+	});
 });
 
 test("Imprimir cupom de venda não finalizada", () => {
-	const venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
-	const produto = new Produto(234567, "Produto1", "un", 100, "");
+	testarErros(MENSAGEM_VENDA_NAO_FINALIZADA, () => {
+		const venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
+		const produto = new Produto(234567, "Produto1", "un", 100, "");
 
-	venda.adicionarItem(new ItemVenda(produto, 1));
+		venda.adicionarItem(new ItemVenda(produto, 1));
 
-	let mensagem;
-	try {
 		venda.imprimeCupom();
-	} catch (error) {
-		mensagem = error.message;
-	}
-
-	expect(mensagem).toBe(MENSAGEM_VENDA_NAO_FINALIZADA);
+	});
 });
 
 test("Ver pagamento antes de finalizar venda", () => {
-	const venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
-	const produto = new Produto(234567, "Produto1", "un", 100, "");
+	testarErros(MENSAGEM_VENDA_NAO_FINALIZADA, () => {
+		const venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
+		const produto = new Produto(234567, "Produto1", "un", 100, "");
 
-	venda.adicionarItem(new ItemVenda(produto, 1));
+		venda.adicionarItem(new ItemVenda(produto, 1));
 
-	let mensagem;
-	try {
 		let _ = venda.pagamento;
-	} catch (error) {
-		mensagem = error.message;
-	}
-
-	expect(mensagem).toBe(MENSAGEM_VENDA_NAO_FINALIZADA);
+	});
 });
 
 test("Ver pagamento depois de finalizar venda", () => {
@@ -290,22 +296,61 @@ test("Ver pagamento depois de finalizar venda", () => {
 	const produto = new Produto(234567, "Produto1", "un", 100, "");
 
 	venda.adicionarItem(new ItemVenda(produto, 1));
-	venda.finalizarVenda("credito", 100);
+	venda.finalizarVenda("credito", 100, IMPRESSORA, OPERADOR);
 
 	const pagamento: PagamentoProps = { forma: "credito", valor: 100 };
 	expect(venda.pagamento).toStrictEqual(pagamento);
 });
 
-test("Adicionar item sem descrição", () => {
-	const venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
-	const produto = new Produto(234567, "", "un", 100, "");
+test("Finalizar venda com Operador inválido", () => {
+	testarErros(MENSAGEM_OPERADOR_INVALIDO, () => {
+		const venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
+		const produto = new Produto(234567, "Produto1", "un", 100, "");
 
-	let mensagem;
-	try {
 		venda.adicionarItem(new ItemVenda(produto, 1));
-	} catch (error) {
-		mensagem = error.message;
-	}
 
-	expect(mensagem).toBe(MENSAGEM_PRODUTO_SEM_DESCRICAO);
+		venda.finalizarVenda("dinheiro", Infinity, IMPRESSORA, -1);
+	});
+});
+
+test("Ver operador antes de finalizar a venda", () => {
+	testarErros(MENSAGEM_VENDA_NAO_FINALIZADA, () => {
+		const venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
+		const produto = new Produto(234567, "Produto1", "un", 100, "");
+
+		venda.adicionarItem(new ItemVenda(produto, 1));
+
+		let _ = venda.operador;
+	});
+});
+
+test("Ver operador depois de finalizar a venda", () => {
+	const venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
+	const produto = new Produto(234567, "Produto1", "un", 100, "");
+
+	venda.adicionarItem(new ItemVenda(produto, 1));
+	venda.finalizarVenda("dinheiro", Infinity, IMPRESSORA, OPERADOR);
+
+	expect(venda.operador).toBe(OPERADOR);
+});
+
+test("Ver Impressora antes de finalizar a venda", () => {
+	testarErros(MENSAGEM_VENDA_NAO_FINALIZADA, () => {
+		const venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
+		const produto = new Produto(234567, "Produto1", "un", 100, "");
+
+		venda.adicionarItem(new ItemVenda(produto, 1));
+
+		let _ = venda.impressora;
+	});
+});
+
+test("Ver impressora depois de finalizar a venda", () => {
+	const venda = LOJA_COMPLETA.vender(DATA_PADRAO, CCF, COO);
+	const produto = new Produto(234567, "Produto1", "un", 100, "");
+
+	venda.adicionarItem(new ItemVenda(produto, 1));
+	venda.finalizarVenda("dinheiro", Infinity, IMPRESSORA, OPERADOR);
+
+	expect(venda.impressora).toBe(IMPRESSORA);
 });

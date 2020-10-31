@@ -1,9 +1,11 @@
 import { isEmpty, justify } from "./actions";
+import { ImpressoraFiscal } from "./impressoraFiscal";
 import { ItemVenda } from "./itemVenda";
 import { Loja } from "./loja";
 
 const IMPOSTO_FEDERAL = 0.0754;
 const IMPOSTO_ESTADUAL = 0.0481;
+const DIVISOR = "------------------------------\n";
 
 interface ImpostoProps {
 	federal: number;
@@ -28,11 +30,14 @@ export class Venda {
 		this._itens = new Array<ItemVenda>();
 		this._finalizada = false;
 		this._troco = NaN;
+		this._operador = NaN;
 
 		this._pagamento = {
 			forma: "dinheiro",
 			valor: NaN,
 		};
+
+		this._impressora = new ImpressoraFiscal("", "", "", "");
 	}
 
 	private _pagamento: PagamentoProps;
@@ -53,9 +58,25 @@ export class Venda {
 		return this._troco;
 	}
 
+	private _operador: number;
+	public get operador(): number {
+		if (!this._finalizada) {
+			throw new Error("A venda não foi finalizada.");
+		}
+		return this._operador;
+	}
+
 	private _finalizada: boolean;
 	public get finalizada(): boolean {
 		return this._finalizada;
+	}
+
+	private _impressora: ImpressoraFiscal;
+	public get impressora(): ImpressoraFiscal {
+		if (!this._finalizada) {
+			throw new Error("A venda não foi finalizada.");
+		}
+		return this._impressora;
 	}
 
 	private _itens: ItemVenda[];
@@ -131,13 +152,13 @@ export class Venda {
 		let textoLoja = this.loja.dadosLoja();
 		let textoVenda = this.dadosVendas();
 
-		cupom = `${textoLoja}------------------------------\n${textoVenda}\n   CUPOM FISCAL   \nITEM CODIGO DESCRICAO QTD UN VL UNIT(R$) ST VL ITEM(R$)\n`;
+		cupom = `${textoLoja}${DIVISOR}${textoVenda}\n   CUPOM FISCAL   \nITEM CODIGO DESCRICAO QTD UN VL UNIT(R$) ST VL ITEM(R$)\n`;
 
 		this._itens.forEach((item, index) => {
 			cupom += item.imprimeItem(index + 1) + "\n";
 		});
 
-		cupom += `------------------------------\n`;
+		cupom += `${DIVISOR}`;
 
 		const total = this.valorTotal().toFixed(2);
 		const valorPago = this._pagamento.valor.toFixed(2);
@@ -166,6 +187,10 @@ export class Venda {
 		}
 
 		cupom += `TOTAL R\$ ${total}\n${formaDePagamento} ${valorPago}\nTroco R$ ${troco}\nLei 12.741, Valor aprox., Imposto F=${impostoF}, E=${impostoE}\n`;
+
+		cupom += `${DIVISOR}OPERADOR: ${
+			this.operador
+		}\n${DIVISOR}${this.impressora.dadosImpressora()}\n`;
 
 		return cupom;
 	}
@@ -231,14 +256,24 @@ export class Venda {
 
 	public finalizarVenda(
 		forma: "dinheiro" | "credito" | "debito",
-		valor: number
+		valor: number,
+		impressora: ImpressoraFiscal,
+		operador: number
 	): void {
 		if (valor < this.valorTotal()) {
 			throw new Error("O valor pago não é suficente.");
 		}
+
+		if (operador <= 0) {
+			throw new Error("Operador inválido.");
+		}
+
+		impressora.validarImpressora();
+
 		this._troco = valor - this.valorTotal();
 		this._finalizada = true;
-
+		this._impressora = impressora;
+		this._operador = operador;
 		this._pagamento = {
 			forma,
 			valor,
